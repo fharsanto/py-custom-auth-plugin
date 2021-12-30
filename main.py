@@ -14,22 +14,19 @@ sys.path.append(vendor_dir)
 
 import jwt
 
-
 @Hook
 def AuthCheck1(request, session, metadata, spec):
     tyk.log("AuthCheck is called", "info")
     tyk.log("hello world", "info")
     # tyk.log(request, "info")
-    public_key = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAltnb4lSe2Y9ia8vfep3pW7mgXb1U8oIs9pVJTiZp0P5xNaPjLAwo2yDpNY4pb4HLndfKBvDvh2e7CYa/BttN+mrd/CKuu8YRi1JeMdt2VMEP45o5xQ5aoP0TWVaQMJIIt+rXgLi/6DPS6HWmooHcj/X36FPpDJSDcvisp3Pr7fCpWoK295lsgVQUFMfDh+HRGPTkWCAC1Qu34SaoIAVDlLfrhCMC6yU48dORt2+8mZZcuRpJyjnJs/epuRpH0MlsNAefWccdSbA37PtPitXbWzGNjvo2W/LNkvz1zorOvoIHNZh1O2OKBdh+v5dhXFlkfMPU4yYoyr4BMGGwzQKgtwIDAQAB\n-----END PUBLIC KEY-----"
-    tyk.log(type(public_key), "info")
-    tyk.log(public_key, "info")
 
     # request.get_header is a helper method, to get the full header list, use request.object.headers
     auth_header = request.get_header("Authorization")
     tyk.log(auth_header, "info")
-    auth_token = auth_header.split(" ", 1)[-1].strip()
-    tyk.log(type(auth_token), "info")
-    tyk.log(auth_token, "info")
+    # tyk.log(type(auth_header), "info")
+    auth_token = auth_header.split()[1]
+    # tyk.log(type(auth_token), "error")
+    tyk.log(auth_token, "error")
     try:
         jwt_headers = jwt.get_unverified_header(auth_token)
     except Exception as e:
@@ -41,20 +38,29 @@ def AuthCheck1(request, session, metadata, spec):
         return request, session, metadata
 
     tyk.log("hasil jwt headers", "info")
-    tyk.log(jwt_headers, "info")
+    # tyk.log(jwt_headers, "info")
+    pk = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAltnb4lSe2Y9ia8vfep3pW7mgXb1U8oIs9pVJTiZp0P5xNaPjLAwo2yDpNY4pb4HLndfKBvDvh2e7CYa/BttN+mrd/CKuu8YRi1JeMdt2VMEP45o5xQ5aoP0TWVaQMJIIt+rXgLi/6DPS6HWmooHcj/X36FPpDJSDcvisp3Pr7fCpWoK295lsgVQUFMfDh+HRGPTkWCAC1Qu34SaoIAVDlLfrhCMC6yU48dORt2+8mZZcuRpJyjnJs/epuRpH0MlsNAefWccdSbA37PtPitXbWzGNjvo2W/LNkvz1zorOvoIHNZh1O2OKBdh+v5dhXFlkfMPU4yYoyr4BMGGwzQKgtwIDAQAB\n-----END PUBLIC KEY-----"
+    tyk.log(pk, "error")
+    public_key = bytes(pk, 'utf-8')
+    # tyk.log(type(public_key), "info")
+    # tyk.log(public_key, "info")
+
     try:
         tyk.log("Masuk mulai decode", "info")
         decoded = jwt.decode(auth_token, public_key, audience="account", algorithms=[jwt_headers['alg']],
                              options={"verify_signature": True})
         tyk.log("AuthCheck is successful", "info")
         # print(decoded)
-        tyk.log(decoded, "info")
+        # tyk.log(decoded, "info")
         # print(type(decoded))
         # print(decoded['name'])
         metadata["token"] = auth_header
-        metadata["sub"] = decoded["sub"]
-        metadata["exp"] = decoded["exp"]
-        metadata["azp"] = decoded["azp"]
+        if "sub" in decoded:
+            metadata["sub"] = decoded["sub"]
+        if "exp" in decoded:
+            metadata["exp"] = str(decoded["exp"])
+        if "azp" in decoded:
+            metadata["azp"] = decoded["azp"]
         return request, session, metadata
     except Exception as e:
         tyk.log("AuthCheck is failed #2", "error")
